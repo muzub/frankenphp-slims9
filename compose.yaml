@@ -1,0 +1,60 @@
+# FrankenPHP SLiMS 9 Docker Compose configuration
+# Created: 2025-05-16
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./slims-data:/app/files
+      - ./config:/app/config
+    depends_on:
+      db:
+        condition: service_started
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_NAME=slims
+      - DATABASE_USER=slims
+      - DATABASE_PASSWORD=slims
+      - PHP_MEMORY_LIMIT=256M
+      - UPLOAD_MAX_FILESIZE=50M
+      - POST_MAX_SIZE=50M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/index.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: slims
+      MYSQL_USER: slims
+      MYSQL_PASSWORD: slims
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  db-data:
+    name: frankenphp-slims9-db-data
+  slims-data:
+    name: frankenphp-slims9-app-data
+
+networks:
+  default:
+    name: frankenphp-slims9-network
